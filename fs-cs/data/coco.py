@@ -27,16 +27,16 @@ class DatasetCOCO(Dataset):
         self.base_path = os.path.join(datapath, "COCO2014")
         self.transform = transform
 
+        # for train, it is 60 class idxs; for val, it is 20 class idxs
         self.class_ids = self.build_class_ids()
-        print(f">>>> self.class_ids: {self.class_ids}")
 
+        # a dict with key of class idx; for idx in self.class_ids, the value is a list of img filenames: ['train2014/COCO_train2014_000000013279.jpg', ...]; for idx NOT in self.class_ids, the value is []
         self.img_metadata_classwise = (
             self.build_img_metadata_classwise()
         )  # keys: 1, 2, ..., 79, 80
-        print(f">>>> self.img_metadata_classwise: {self.img_metadata_classwise}")
 
+        # a long list of values of above dict (self.img_metadata_classwise), without keys
         self.img_metadata = self.build_img_metadata()
-        print(f">>>> self.img_metadata: {self.img_metadata}")
 
     def __len__(self):
         return len(self.img_metadata) if self.split == "trn" else 1000
@@ -45,6 +45,7 @@ class DatasetCOCO(Dataset):
         # ignores idx during training & testing and perform uniform sampling over object classes to form an episode
         # (due to the large size of the COCO dataset)
         query_name, support_names, _support_classes = self.sample_episode(idx)
+
         (
             query_img,
             query_cmask,
@@ -92,16 +93,13 @@ class DatasetCOCO(Dataset):
         return batch
 
     def build_class_ids(self):
-        nclass_val = self.nclass // self.nfolds
-        print(f">>>> nclass_val: {nclass_val}")
+        nclass_val = self.nclass // self.nfolds  # nclass_val==20
 
         # e.g. fold0 val: 1, 5, 9, ..., 77
         class_ids_val = [self.fold + self.nfolds * v + 1 for v in range(nclass_val)]
-        print(f">>>> class_ids_val: {class_ids_val}")
 
         # e.g. fold0 trn: 2, 3, 4, 6, 7, 8, 10, 11, 12, ..., 78, 79, 80
         class_ids_trn = [x for x in range(1, self.nclass + 1) if x not in class_ids_val]
-        print(f">>>> class_ids_trn: {class_ids_trn}")
 
         assert len(set(class_ids_trn + class_ids_val)) == self.nclass
         assert 0 not in class_ids_val
@@ -118,7 +116,6 @@ class DatasetCOCO(Dataset):
         with open(f"./data/splits/coco/{self.split}/fold{self.fold}.pkl", "rb") as f:
             # class ids: 0, 1, 2, ..., 79
             img_metadata_classwise_temp = pickle.load(f)
-            print(f">>>> img_metadata_classwise_temp: {img_metadata_classwise_temp}")
 
             # class ids: 1, 2, 3, ..., 80
             for k in img_metadata_classwise_temp.keys():
